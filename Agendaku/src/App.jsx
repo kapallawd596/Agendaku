@@ -1,121 +1,141 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import heroImg from './assets/hero.png'
-import './App.css'
+import React, { useState, useEffect } from 'react';
+import { BrowserRouter as Router, Routes, Route, useNavigate, Navigate } from 'react-router-dom';
+import { TaskProvider, useTasks } from './context/TaskContext';
+import { LanguageProvider } from './context/LanguageContext';
+import Sidebar from './components/Sidebar';
+import Navbar from './components/Navbar';
+import Dashboard from './components/Dashboard';
+import ProjectPage from './components/ProjectPage';
+import ProjectsPage from './components/ProjectsPage';
+import TasksPage from './components/TasksPage';
+import CalendarPage from './components/CalendarPage';
+import SettingsPage from './components/SettingsPage';
+import LoginPage from './components/LoginPage';
 
-function App() {
-  const [count, setCount] = useState(0)
+function AppContent() {
+  const [darkMode, setDarkMode] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [currentUser, setCurrentUser] = useState(null);
+  const { updateCurrentUser } = useTasks();
+  const navigate = useNavigate();
 
+  // Cek status login saat app dimulai - HANYA SEKALI
+  useEffect(() => {
+    const auth = localStorage.getItem('isAuthenticated');
+    const user = localStorage.getItem('currentUser');
+    
+    if (auth === 'true' && user) {
+      const parsedUser = JSON.parse(user);
+      setIsAuthenticated(true);
+      setCurrentUser(parsedUser);
+      updateCurrentUser(parsedUser);
+    }
+  }, []); // <-- TIDAK PERLU DEPENDENCY
+
+  const handleLogin = (user) => {
+    setIsAuthenticated(true);
+    setCurrentUser(user);
+    updateCurrentUser(user);
+    navigate('/');
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('isAuthenticated');
+    localStorage.removeItem('currentUser');
+    setIsAuthenticated(false);
+    setCurrentUser(null);
+    updateCurrentUser(null);
+    navigate('/login');
+  };
+
+  const handleBoardChange = (boardId) => {
+    navigate(`/project/${boardId}`);
+  };
+
+  const handlePageChange = (page) => {
+    switch(page) {
+      case 'dashboard':
+        navigate('/dashboard');
+        break;
+      case 'projects':
+        navigate('/project/personal');
+        break;
+      case 'tasks':
+        navigate('/tasks');
+        break;
+      case 'calendar':
+        navigate('/calendar');
+        break;
+      case 'settings':
+        navigate('/settings');
+        break;
+      default:
+        navigate('/dashboard');
+    }
+  };
+
+  // Jika belum login, render LoginPage saja
+  if (!isAuthenticated) {
+    return <LoginPage onLogin={handleLogin} />;
+  }
+
+  // Jika sudah login, render layout dengan Sidebar & Navbar
   return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
+    <div className={`min-h-screen ${darkMode ? 'dark' : ''}`}>
+      <div className="flex h-screen bg-gray-50 dark:bg-gray-900">
+        <Sidebar 
+          collapsed={sidebarCollapsed} 
+          setCollapsed={setSidebarCollapsed}
+          onBoardChange={handleBoardChange}
+          onPageChange={handlePageChange}
+          onLogout={handleLogout}
+          currentUser={currentUser}
+        />
+        
+        <div className="flex-1 flex flex-col overflow-hidden">
+          <Navbar 
+            darkMode={darkMode} 
+            setDarkMode={setDarkMode}
+            activeBoard={window.location.pathname.split('/')[2] || 'personal'}
+            activePage={window.location.pathname.split('/')[1] || 'dashboard'}
+            currentUser={currentUser}
+          />
+          
+          <main className="flex-1 overflow-y-auto p-4 md:p-6">
+            <Routes>
+              <Route path="/" element={<Navigate to="/project/personal" replace />} />
+              <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/projects" element={<ProjectsPage />} />
+              <Route path="/project/:boardId" element={<ProjectPage />} />
+              <Route path="/tasks" element={<TasksPage />} />
+              <Route path="/calendar" element={<CalendarPage />} />
+              <Route path="/settings" element={
+                <SettingsPage 
+                  darkMode={darkMode} 
+                  setDarkMode={setDarkMode}
+                  onLogout={handleLogout}
+                />
+              } />
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          </main>
         </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.jsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
-      </section>
-
-      <div className="ticks"></div>
-
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
-
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
-  )
+      </div>
+    </div>
+  );
 }
 
-export default App
+function App() {
+  return (
+    <Router>
+      <TaskProvider>
+        <LanguageProvider>
+          <AppContent />
+        </LanguageProvider>
+      </TaskProvider>
+    </Router>
+  );
+}
+
+export default App;
